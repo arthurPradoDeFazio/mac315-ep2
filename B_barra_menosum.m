@@ -98,7 +98,6 @@ function [ind v ] = simplex(A,b,c,m,n,x,bind, Binv)
 
         [reduced_costs, non_basic_variables] = calculate_reduced_costs(A, c, n, bind, Binv);
 
-        % Check if we have found an optimal solution:
         if (all(reduced_costs >= 0))   
             [ind v] = optimal_solution(c, n, x, bind);     
             return
@@ -108,10 +107,9 @@ function [ind v ] = simplex(A,b,c,m,n,x,bind, Binv)
         printf("\nEntra na base: %d\n", j)
 
         u = compute_u(A, bind, Binv, j);
-        [theta, l] = calculate_theta(m, x, bind, u);
-        
+        [theta, l] = calculate_theta(m, x, bind, u);        
         printf("\nTheta*\n%f\n", theta);
-        % Check if we are going towards unbounded direction:
+        
         if (theta == Inf)
             [ind v] = unbounded_direction(u, bind, j, m, n);
             return
