@@ -1,85 +1,151 @@
 0;
-function Binv = B_barinv(Binv, m, u, l) # monta a matriz [B^-1 | u] e faz com que u se transforme no l-ésimo vetor canonico, o que está à esquerda é B barra inversa
-  for i = 1:m
-    if i == l
-      Binv(l, :) = (1 / u(l)) * Binv(l, :);
-    else
-      Binv(i, :) = Binv(i, :) - (u(i) / u(l)) * Binv(l, :);
-    endif
-  endfor  
+
+function print_iteration_info(c, bind, x, iteration)
+    printf("Iterando %d\n", iteration);
+    for idx = 1:numel(bind)
+        printf("%d %f\n", bind(idx), x(bind(idx)));
+    endfor
+
+    printf("\nValor função objetivo: %f\n", c*x');
+
 endfunction
 
-function [theta_star, l] = theta(x, bind, m, u) # calcula o theta para andar na direcão básica e o índice em que ele é atingido
-  theta_star = Inf;
-  l = -1;
-  
-  for i = 1:m
-    if u(i) > 0
-      new_theta = x(bind(i)) / u(i);
-      if new_theta < theta_star # note que escolhemos o primeiro indice l que realiza o mínimo
-        theta_star = new_theta;
-        l = i;
-      endif
-    endif
-  endfor
-endfunction
-
-function j_index = entering_column_index(A, c, bind, Binv, m, n) # talve esteja errada
-  bind_sorted = sort(bind);
-  looking_at = 1;
-  p_transpose = c(bind)' * Binv;
-  j_index = -1;
-  
-  for j = 1:n
-    # se j nao pertence ao vetor bind
-    if looking_at > m || j != bind_sorted(looking_at) 
-      if c(j) - p_transpose * A(:, j) < 0 # escolhemos o primeiro custo negativo
-        j_index = j;
-        return;
-      endif
-    else
-      looking_at += 1;
-    endif
-  endfor
-  
-endfunction
-
-function y = new_basic_solution(x, bind, m, n, u, theta, new_basic_index)
-  y = zeros(n, 1);
-  y(new_basic_index) = theta;
-  for i = 1:m
-    y(bind(i)) = x(bind(i)) - theta * u(i);
-  endfor
-endfunction
-
-function v = unbouded_direction(u, bind, new_basic_index, m, n)
-  v = zeros(n, 1);
-  v(new_basic_index) = 1;
-  for i = 1:m
-    v(bind(i)) = -u(i);
-  endfor
-endfunction
-
-function [ind v] = simplex(A, b, c, m, n, x, bind, Binv)
-  while 1
-    new_basic_index = entering_column_index(A, c, bind, Binv, m, n); # escolhe índice que vai sair
-
-    if new_basic_index == -1 # nenhum custo reduzido de índices não básicos é negativo -> encotramos a solução
-      ind = 0;
-      v = x;
-      return;
-    endif
+function [reduced_costs, non_basic_variables] = calculate_reduced_costs(A, c, n, bind, Binv)
+    non_basic_variables = setdiff(1:n , bind);
+    reduced_costs = c(non_basic_variables) - c(bind) * Binv * A(:,non_basic_variables);
     
-    u = Binv * A(:, new_basic_index);
-    [theta, exiting_index] = theta_star(x, bind, m, u)
-    if theta == Inf
-      ind = -1;
-      v = unbouded_direction(u, bind, new_basic_index, m, n);
-      return;
-    endif
-    
-    bind(exiting_index) = new_basic_index;
-    x = new_basic_solution(x, bind, m, n, u, theta, new_basic_index);
-    Binv = B_barinv(Binv, m, u, l);
-  endwhile
+    printf("\nCustos reduzidos\n");
+    for idx = 1:numel(reduced_costs)
+        printf("%d %f\n", non_basic_variables(idx), reduced_costs(idx) );
+    endfor
 endfunction
+
+function u = compute_u(A, bind, Binv, j)
+    u = Binv * A(:, j);
+    
+    printf("\nDireção\n");
+    for idx =  1:numel(u)
+        printf("%d %f\n", bind(idx), u(idx))
+    endfor
+endfunction
+
+function [theta, l] = calculate_theta(m, x, bind, u)
+    theta = Inf;
+    l = -1;
+    
+    for i = 1:m
+        if (u(i) > 0)
+            current_theta = x(bind(i))/u(i);
+            if (current_theta < theta)
+                l = i;
+                theta = current_theta;
+            endif
+        endif
+    endfor
+endfunction
+
+function [ind v] = optimal_solution(c, n, x, bind)
+    ind = 0;
+    v = zeros(n, 1);
+    v(bind) = x(bind);
+
+    printf("\nSolução ótima encontrada com custo %f\n", c*x');
+    for i = 1:numel(v)
+        printf("%d %f\n", i, v(i));
+    endfor
+endfunction
+
+function [ind v] = unbounded_direction(u, bind, j, m, n)
+    ind = -1;
+    v = zeros(n, 1);
+    v(j) = 1;
+    for i = 1:m
+      v(bind(i)) = -u(i);
+    endfor
+
+    printf("\nProblema é ilimitado. Direção de custo -Inf:\n");
+    for i = 1:numel(v)
+        printf("%d %f\n", i, v(i));
+    endfor
+  endfunction
+
+function x = update_basic_solution(x, bind, m, u, theta, j, l)
+    x(j) = theta;
+    for i = 1:m
+        if (i != l)
+            x(bind(i)) -= theta*u(i);
+        else
+            x(bind(i)) = 0;
+        endif
+    endfor
+ endfunction
+
+ function Binv = update_Binv(Binv, m, u, l)
+    for i = 1:m
+        if (i != l)
+            Binv(i, :) += Binv(l, :)*(-u(i)/u(l));
+        endif
+    endfor
+
+    Binv(l, :) = Binv(l, :) / (u(l));
+ endfunction
+
+function [ind v ] = simplex(A,b,c,m,n,x,bind, Binv)
+    iteration = 0;
+
+    while(true)
+        print_iteration_info(c, bind, x, iteration)
+
+        [reduced_costs, non_basic_variables] = calculate_reduced_costs(A, c, n, bind, Binv);
+
+        % Check if we have found an optimal solution:
+        if (all(reduced_costs >= 0))   
+            [ind v] = optimal_solution(c, n, x, bind);     
+            return
+        endif
+
+        j = non_basic_variables(find(reduced_costs < 0)(1));
+        printf("\nEntra na base: %d\n", j)
+
+        u = compute_u(A, bind, Binv, j);
+        [theta, l] = calculate_theta(m, x, bind, u);
+        
+        printf("\nTheta*\n%f\n", theta);
+        % Check if we are going towards unbounded direction:
+        if (theta == Inf)
+            [ind v] = unbounded_direction(u, bind, j, m, n);
+            return
+        endif
+
+        printf("\nSai da base: %d\n\n", bind(l));
+
+        x = update_basic_solution(x, bind, m, u, theta, j, l);
+        bind(l) = j;
+        Binv = update_Binv(Binv, m, u, l);
+        iteration++;
+    endwhile
+endfunction
+
+% Example with optimal solution:
+b = [20 20 20];
+c = [-10  -12 -12 0 0 0];
+A = [ [1; 2; 2] [2; 1; 2] [2; 2; 1] [1; 0; 0] [0; 1; 0] [0; 0; 1] ];
+m = 3;
+n = 6;
+x = [0, 0, 0, 20, 20, 20];
+bind = [4, 5, 6];
+B = [ [1; 0; 0] [0; 1; 0] [0; 0; 1]];
+Binv = inv(B);
+
+% Example with unlimited cost:
+% A = [ [1; 0] [2; 1] [0; 1] [1; 1] [0; 0] ];
+% b = [10 3];
+% c = [4  5  1 -1 -1];
+% m = 2;
+% n = 5;
+% x = [4 3 0 0 0];
+% bind = [1 2];
+% B = [ [1; 0] [2; 1] ];
+% Binv = inv(B);
+
+[ind v] = simplex(A,b,c,m,n,x,bind, Binv);
