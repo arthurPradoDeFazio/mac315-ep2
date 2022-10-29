@@ -11,13 +11,13 @@ function print_iteration_info(c, bind, x, iteration)
         printf("%d %f\n", bind(idx), x(bind(idx)));
     endfor
 
-    printf("\nValor função objetivo: %f\n", c*x');
+    printf("\nValor função objetivo: %f\n", c'*x);
 
 endfunction
 
 function [reduced_costs, non_basic_variables] = calculate_reduced_costs(A, c, n, bind, Binv)
     non_basic_variables = setdiff(1:n , bind);
-    reduced_costs = c(non_basic_variables) - c(bind) * Binv * A(:,non_basic_variables);
+    reduced_costs = c(non_basic_variables)' - c(bind)' * Binv * A(:,non_basic_variables);
     
     printf("\nCustos reduzidos\n");
     for idx = 1:numel(reduced_costs)
@@ -54,7 +54,7 @@ function [ind v] = optimal_solution(c, n, x, bind)
     v = zeros(n, 1);
     v(bind) = x(bind);
 
-    printf("\nSolução ótima encontrada com custo %f\n", c*x');
+    printf("\nSolução ótima encontrada com custo %f\n", c'*x);
     for i = 1:numel(v)
         printf("%d %f\n", i, v(i));
     endfor
@@ -130,12 +130,12 @@ function [ind v ] = simplex(A,b,c,m,n,x,bind, Binv)
 endfunction
 
 % Example with optimal solution:
-b = [20 20 20];
-c = [-10  -12 -12 0 0 0];
+b = [20 20 20]';
+c = [-10  -12 -12 0 0 0]';
 A = [ [1; 2; 2] [2; 1; 2] [2; 2; 1] [1; 0; 0] [0; 1; 0] [0; 0; 1] ];
 m = 3;
 n = 6;
-x = [0, 0, 0, 20, 20, 20];
+x = [0, 0, 0, 20, 20, 20]';
 bind = [4, 5, 6];
 B = [ [1; 0; 0] [0; 1; 0] [0; 0; 1]];
 Binv = inv(B);
