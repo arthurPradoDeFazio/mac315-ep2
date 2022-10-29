@@ -51,8 +51,7 @@ endfunction
 
 function [ind v] = optimal_solution(c, n, x, bind)
     ind = 0;
-    v = zeros(n, 1);
-    v(bind) = x(bind);
+    v = x;
 
     printf("\nSolução ótima encontrada com custo %f\n", c'*x);
     for i = 1:numel(v)
@@ -142,11 +141,11 @@ Binv = inv(B);
 
 % Example with unlimited cost:
 % A = [ [1; 0] [2; 1] [0; 1] [1; 1] [0; 0] ];
-% b = [10 3];
-% c = [4  5  1 -1 -1];
+% b = [10 3]';
+% c = [4  5  1 -1 -1]';
 % m = 2;
 % n = 5;
-% x = [4 3 0 0 0];
+% x = [4 3 0 0 0]';
 % bind = [1 2];
 % B = [ [1; 0] [2; 1] ];
 % Binv = inv(B);
